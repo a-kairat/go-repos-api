@@ -3,21 +3,14 @@ package database
 import (
 	"encoding/json"
 	"fmt"
-	"log"
-	"os"
 	"strings"
 
-	"github.com/a-kairat/go-repos-api/structs"
-	"github.com/a-kairat/go-repos-api/utils"
-
+	"github.com/a-sube/go-repos-api/structs"
+	"github.com/a-sube/go-repos-api/utils"
 	"github.com/go-pg/pg"
 	"github.com/go-pg/pg/orm"
 )
 
-var (
-	user, userOK = os.LookupEnv("DBUSER")
-	pswd, pswdOK = os.LookupEnv("DBPASSWORD")
-)
 
 type Repo struct {
 	ID              int
@@ -49,14 +42,9 @@ func init() {
 
 func Connect() *pg.DB {
 
-	if !userOK || !pswdOK {
-		log.Printf("User: %v\t Password: %v\n", userOK, pswdOK)
-		os.Exit(1)
-	}
-
 	db := pg.Connect(&pg.Options{
-		User:     user,
-		Password: pswd,
+		User:     utils.DBUSER,
+		Password: utils.DBPSWD,
 	})
 
 	return db

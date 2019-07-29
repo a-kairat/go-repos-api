@@ -14,10 +14,11 @@ import (
 	"net/http"
 	"net/url"
 
-	database "github.com/a-kairat/go-repos-api/db"
-	client "github.com/a-kairat/go-repos-api/gh-client"
-	"github.com/a-kairat/go-repos-api/structs"
-	"github.com/a-kairat/go-repos-api/utils"
+	database "github.com/a-sube/go-repos-api/db"
+	client "github.com/a-sube/go-repos-api/gh-client"
+
+	"github.com/a-sube/go-repos-api/structs"
+	"github.com/a-sube/go-repos-api/utils"
 	"github.com/go-redis/redis"
 )
 
@@ -45,6 +46,9 @@ var (
 )
 
 func main() {
+
+	utils.CheckEnvVars()
+
 	err := database.CreateSchema(db)
 	utils.HandleErrPanic(err, "CREATE SCHEMA")
 

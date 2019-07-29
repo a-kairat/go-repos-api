@@ -6,7 +6,7 @@ import (
 	"log"
 	"net/http"
 
-	database "github.com/a-kairat/go-repos-api/db"
+	database "github.com/a-sube/go-repos-api/db"
 
 	"github.com/gorilla/mux"
 )
@@ -23,6 +23,7 @@ func main() {
 	router.HandleFunc("/search/{term}", search)
 
 	http.Handle("/", router)
+
 	log.Fatal(http.ListenAndServe(":3000", router))
 }
 

@@ -11,17 +11,15 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"os"
 	"sync/atomic"
 	"time"
 
-	"github.com/a-kairat/go-repos-api/utils"
+	"github.com/a-sube/go-repos-api/utils"
 )
 
 var (
-	accessToken, accessTokenOk = os.LookupEnv("GITHUB_ACCESS_TOKEN")
-	search                     int32
-	requests                   int32
+	search   int32
+	requests int32
 )
 
 // GitHubClient is a github http client
@@ -31,6 +29,7 @@ type GitHubClient struct {
 }
 
 func (gh *GitHubClient) Request(method, path, query string, body interface{}) (*http.Request, error) {
+
 	rel := &url.URL{Path: path}
 	url := gh.GHURL.ResolveReference(rel)
 
@@ -56,7 +55,7 @@ func (gh *GitHubClient) Request(method, path, query string, body interface{}) (*
 		return nil, err
 	}
 
-	req.Header.Set("Authorization", "token "+accessToken)
+	req.Header.Set("Authorization", "token "+utils.ACCESSTOKEN)
 
 	return req, nil
 }
