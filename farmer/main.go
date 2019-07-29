@@ -107,33 +107,9 @@ func startDependencySearch(start chan bool) {
 
 	keys, _ := redisClient.HKeys("go-api").Result()
 
-	// keys := []string{"sirupsen/logrus"}
-	// fmt.Println(len(keys))
-	ch := make(chan string, 100)
-	wg := &sync.WaitGroup{}
-	goroutines := 1
-
-	wg.Add(goroutines)
-	for i := 0; i < goroutines; i++ {
-		// https://stackoverflow.com/questions/25306073/always-have-x-number-of-goroutines-running-at-any-time
-		go func() {
-			for {
-				key, ok := <-ch
-				if !ok {
-					wg.Done()
-					return
-				}
-				runBFS(key)
-			}
-		}()
-	}
-
 	for _, key := range keys {
-		ch <- key
+		runBFS(key)
 	}
-
-	close(ch)
-	wg.Wait()
 
 	fmt.Printf("REQUESTS MADE: %d\n", gh.RequestsMade())
 
