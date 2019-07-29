@@ -1,27 +1,15 @@
 package database
 
-// package main
-
 import (
 	"encoding/json"
 	"fmt"
-	"go-api/structs"
-	"go-api/utils"
 	"strings"
+
+	"github.com/a-kairat/go-repos-api/structs"
+	"github.com/a-kairat/go-repos-api/utils"
 
 	"github.com/go-pg/pg"
 	"github.com/go-pg/pg/orm"
-	"github.com/go-redis/redis"
-)
-
-var (
-	redisClient = redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
-		Password: "",
-		DB:       0,
-	})
-	repoID   = 1
-	moduleID = 1
 )
 
 type Repo struct {
@@ -92,7 +80,7 @@ func Insert(db *pg.DB, v structs.Item) {
 		OnConflict("(full_name) DO UPDATE").
 		// Set("id = EXCLUDED.id").
 		Insert()
-	handleErr(err, "DB REPO INSERT")
+	utils.HandleErrPanic(err, "DB REPO INSERT")
 
 	for _, mod := range v.Modules {
 
@@ -111,7 +99,7 @@ func Insert(db *pg.DB, v structs.Item) {
 			// Set("id = EXCLUDED.id").
 			Insert()
 
-		handleErr(err, "DB MODULE INSERT")
+		utils.HandleErrPanic(err, "DB MODULE INSERT")
 
 		repoToModule := &RepoToRepos{RepoID: repo.ID, ModuleID: module.ID}
 
@@ -120,7 +108,7 @@ func Insert(db *pg.DB, v structs.Item) {
 			Where("module_id = ?module_id").
 			SelectOrInsert()
 
-		handleErr(err, "DB REPO TO REPO SELECT OR INSERT")
+		utils.HandleErrPanic(err, "DB REPO TO REPO SELECT OR INSERT")
 
 		fmt.Println(repo.ID, module.ID, resp)
 
@@ -138,11 +126,11 @@ func Select(db *pg.DB, name string) {
 		}).
 		Where("name = ?", name).
 		Select()
-	handleErr(err, "SELECT WITH RELATION")
+	utils.HandleErrPanic(err, "SELECT WITH RELATION")
 
 	j, jErr := json.MarshalIndent(repos, "", " ")
 
-	handleErr(jErr, "JSON WITH INDENT")
+	utils.HandleErrPanic(jErr, "JSON WITH INDENT")
 
 	fmt.Println(string(j))
 }
@@ -154,7 +142,7 @@ func SelectALL(db *pg.DB, name string, repos *[]Repo) {
 		Order("stargazers_count DESC NULLS LAST").
 		Select()
 
-	handleErr(err, "SELECT ALL")
+	utils.HandleErrPanic(err, "SELECT ALL")
 
 }
 
@@ -171,7 +159,7 @@ func SelectLimitOffset(db *pg.DB, page string) ([]Repo, error) {
 		Offset(offset).
 		Select()
 
-	handleErr(err, "SELECT WITH LIMIT AND OFFSET")
+	utils.HandleErrPanic(err, "SELECT WITH LIMIT AND OFFSET")
 
 	return repos, nil
 }
@@ -192,7 +180,7 @@ func SelectModule(db *pg.DB, name, level string) (string, error) {
 	SelectALL(db, name, &repos)
 	repos, reposErr := getRecursiveModulesForEach(db, repos, rLevel)
 
-	handleErr(reposErr, "GET MODULES FOR EACH")
+	utils.HandleErrPanic(reposErr, "GET MODULES FOR EACH")
 
 	dbResponse := DBResponse{
 		Count: len(repos),
@@ -264,7 +252,7 @@ func Search(db *pg.DB, term string) (string, error) {
 		Limit(50).
 		Select()
 
-	handleErr(err, "SEARCH")
+	utils.HandleErrPanic(err, "SEARCH")
 
 	dbResponse := DBResponse{
 		Count: len(repos),
@@ -275,19 +263,3 @@ func Search(db *pg.DB, term string) (string, error) {
 
 	return string(j), nil
 }
-
-func handleErr(err error, text string) {
-	if err != nil {
-		fmt.Println(text)
-		panic(err)
-	}
-}
-
-// func main() {
-// 	db := Connect()
-// 	defer db.Close()
-
-// 	Select(db, "weave")
-// 	// Select20(db)
-// 	// SelectALL(db)
-// }

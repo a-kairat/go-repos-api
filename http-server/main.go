@@ -3,9 +3,10 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	database "go-api/db"
 	"log"
 	"net/http"
+
+	database "github.com/a-kairat/go-repos-api/db"
 
 	"github.com/gorilla/mux"
 )

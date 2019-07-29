@@ -50,7 +50,7 @@ type Item struct {
 	StargazersCount int     `json:"stargazers_count"`
 	ForksCount      int     `json:"forks_count"`
 	Owner           Owner   `json:"owner"`
-	Modules         []*Item `json:"modules" sql:",nullable"`
+	Modules         []*Item `json:"modules"`
 }
 
 func (data *Body) StoreToRedis() error {
@@ -66,17 +66,3 @@ func (data *Body) StoreToRedis() error {
 
 	return nil
 }
-
-// func (item *Item) StoreItem() error {
-// 	// jsonData, jsonErr := json.Marshal(item)
-// 	// if jsonErr != nil {
-// 	// 	log.Fatalln(jsonErr)
-// 	// }
-
-// 	// redisClient.HSet("go-api", strings.ToLower(item.FullName), jsonData)
-// 	err := database.Insert(&item)
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// 	return nil
-// }

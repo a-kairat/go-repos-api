@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"go-api/utils"
+
 	"runtime"
 
 	"io"
@@ -14,6 +14,8 @@ import (
 	"os"
 	"sync/atomic"
 	"time"
+
+	"github.com/a-kairat/go-repos-api/utils"
 )
 
 var (
@@ -143,15 +145,3 @@ func setInterval(timeLeft int64, limit int) time.Duration {
 
 	return time.Second * 0
 }
-
-// func main() {
-// 	if !accessTokenOk {
-// 		log.Fatalln("Can't read access token")
-// 	}
-
-// 	gh := GitHubClient{&http.Client{}, &url.URL{
-// 		Scheme: "https",
-// 		Host:   "api.github.com"}}
-
-// 	gh.getRawFile("/repos/kubernetes/kubernetes/contents/go.mod")
-// }

@@ -3,10 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	database "go-api/db"
-	client "go-api/gh-client"
-	"go-api/structs"
-	"go-api/utils"
+
 	"time"
 
 	"log"
@@ -17,6 +14,10 @@ import (
 	"net/http"
 	"net/url"
 
+	database "github.com/a-kairat/go-repos-api/db"
+	client "github.com/a-kairat/go-repos-api/gh-client"
+	"github.com/a-kairat/go-repos-api/structs"
+	"github.com/a-kairat/go-repos-api/utils"
 	"github.com/go-redis/redis"
 )
 
@@ -44,9 +45,8 @@ var (
 )
 
 func main() {
-	if err := database.CreateSchema(db); err != nil {
-		panic(err)
-	}
+	err := database.CreateSchema(db)
+	utils.HandleErrPanic(err, "CREATE SCHEMA")
 
 	start <- true
 
