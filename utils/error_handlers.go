@@ -1,20 +1,26 @@
 package utils
 
 import (
-	"fmt"
 	"log"
+	"os"
 )
 
-func HandleErrPanic(err error, text string) {
+func HandleErrEXIT(err error, text string) {
 	if err != nil {
-		fmt.Println(text)
+		log.Printf("ERROR: %v at %v", err, text)
+		os.Exit(1)
+	}
+}
+
+func HandleErrPANIC(err error, text string) {
+	if err != nil {
+		log.Printf("ERROR: %v at %v", err, text)
 		panic(err)
 	}
 }
 
 func HandleErrLog(err error, text string) {
 	if err != nil {
-		log.Println(text)
-		// panic(err)
+		log.Printf("ERROR: %v at %v", err, text)
 	}
 }

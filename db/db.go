@@ -9,8 +9,16 @@ import (
 	"github.com/a-sube/go-repos-api/utils"
 	"github.com/go-pg/pg"
 	"github.com/go-pg/pg/orm"
+	"github.com/go-redis/redis"
 )
 
+var (
+	redisClient = redis.NewClient(&redis.Options{
+		Addr:     "localhost:6379",
+		Password: "",
+		DB:       0,
+	})
+)
 
 type Repo struct {
 	ID              int
@@ -57,7 +65,7 @@ func CreateSchema(db *pg.DB) error {
 	}
 	for _, model := range models {
 		err := db.CreateTable(model, &orm.CreateTableOptions{
-			// Temp: true,
+			Temp: true,
 		})
 		if err != nil {
 			return err
@@ -81,7 +89,7 @@ func Insert(db *pg.DB, v structs.Item) {
 		OnConflict("(full_name) DO UPDATE").
 		// Set("id = EXCLUDED.id").
 		Insert()
-	utils.HandleErrPanic(err, "DB REPO INSERT")
+	utils.HandleErrEXIT(err, "DB REPO INSERT")
 
 	for _, mod := range v.Modules {
 
@@ -100,18 +108,16 @@ func Insert(db *pg.DB, v structs.Item) {
 			// Set("id = EXCLUDED.id").
 			Insert()
 
-		utils.HandleErrPanic(err, "DB MODULE INSERT")
+		utils.HandleErrEXIT(err, "DB MODULE INSERT")
 
 		repoToModule := &RepoToRepos{RepoID: repo.ID, ModuleID: module.ID}
 
-		resp, err := db.Model(repoToModule).
+		_, err = db.Model(repoToModule).
 			Where("repo_id = ?repo_id").
 			Where("module_id = ?module_id").
 			SelectOrInsert()
 
-		utils.HandleErrPanic(err, "DB REPO TO REPO SELECT OR INSERT")
-
-		fmt.Println(repo.ID, module.ID, resp)
+		utils.HandleErrEXIT(err, "DB REPO TO REPOS SELECT OR INSERT")
 
 	}
 
@@ -119,7 +125,7 @@ func Insert(db *pg.DB, v structs.Item) {
 
 func Select(db *pg.DB, name string) {
 	var repos []Repo
-	// repo := new(Repo)
+
 	err := db.Model(repos).
 		Relation("Modules", func(q *orm.Query) (*orm.Query, error) {
 			q = q.OrderExpr("repo.id DESC")
@@ -127,11 +133,11 @@ func Select(db *pg.DB, name string) {
 		}).
 		Where("name = ?", name).
 		Select()
-	utils.HandleErrPanic(err, "SELECT WITH RELATION")
+	utils.HandleErrEXIT(err, "SELECT WITH RELATION")
 
 	j, jErr := json.MarshalIndent(repos, "", " ")
 
-	utils.HandleErrPanic(jErr, "JSON WITH INDENT")
+	utils.HandleErrEXIT(jErr, "JSON WITH INDENT")
 
 	fmt.Println(string(j))
 }
@@ -143,7 +149,7 @@ func SelectALL(db *pg.DB, name string, repos *[]Repo) {
 		Order("stargazers_count DESC NULLS LAST").
 		Select()
 
-	utils.HandleErrPanic(err, "SELECT ALL")
+	utils.HandleErrEXIT(err, "SELECT ALL")
 
 }
 
@@ -160,7 +166,7 @@ func SelectLimitOffset(db *pg.DB, page string) ([]Repo, error) {
 		Offset(offset).
 		Select()
 
-	utils.HandleErrPanic(err, "SELECT WITH LIMIT AND OFFSET")
+	utils.HandleErrEXIT(err, "SELECT WITH LIMIT AND OFFSET")
 
 	return repos, nil
 }
@@ -173,6 +179,10 @@ func SelectModule(db *pg.DB, name, level string) (string, error) {
 		level = "1"
 	}
 
+	if level == "max" {
+		level = "9"
+	}
+
 	rLevel, lErr := utils.StrToInt(level)
 	if lErr != nil {
 		return "", fmt.Errorf("Recursion level")
@@ -181,7 +191,7 @@ func SelectModule(db *pg.DB, name, level string) (string, error) {
 	SelectALL(db, name, &repos)
 	repos, reposErr := getRecursiveModulesForEach(db, repos, rLevel)
 
-	utils.HandleErrPanic(reposErr, "GET MODULES FOR EACH")
+	utils.HandleErrLog(reposErr, "GET MODULES FOR EACH")
 
 	dbResponse := DBResponse{
 		Count: len(repos),
@@ -190,19 +200,21 @@ func SelectModule(db *pg.DB, name, level string) (string, error) {
 
 	j, _ := json.MarshalIndent(dbResponse, "", "  ")
 
-	return string(j), nil
+	jString := string(j)
+
+	return jString, nil
 }
 
 func getRecursiveModulesForEach(db *pg.DB, repos []Repo, level int) ([]Repo, error) {
-	if level > 6 {
-		level = 6
+	if level > 9 {
+		level = 9
 	}
 
 	if level > 0 {
 		for i, repo := range repos {
 			r, qErr := queryModules(db, repo.FullName, repo)
 			if qErr != nil {
-				return []Repo{}, fmt.Errorf("Item not found")
+				return []Repo{}, qErr
 			}
 			repos[i] = r
 		}
@@ -228,7 +240,7 @@ func queryModules(db *pg.DB, fullName string, repo Repo) (Repo, error) {
 		Select()
 
 	if err != nil {
-		return Repo{}, fmt.Errorf("Item not found")
+		return Repo{}, fmt.Errorf("item not found %v", fullName)
 	}
 
 	return repo, nil
@@ -253,7 +265,7 @@ func Search(db *pg.DB, term string) (string, error) {
 		Limit(50).
 		Select()
 
-	utils.HandleErrPanic(err, "SEARCH")
+	utils.HandleErrEXIT(err, "SEARCH")
 
 	dbResponse := DBResponse{
 		Count: len(repos),

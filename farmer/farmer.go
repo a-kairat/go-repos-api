@@ -3,6 +3,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"os/signal"
 
 	"time"
 
@@ -50,7 +52,18 @@ func main() {
 	utils.CheckEnvVars()
 
 	err := database.CreateSchema(db)
-	utils.HandleErrPanic(err, "CREATE SCHEMA")
+	utils.HandleErrEXIT(err, "CREATE SCHEMA")
+
+	sigs := make(chan os.Signal, 1)
+
+	signal.Notify(sigs)
+
+	go func() {
+		s := <-sigs
+		log.Printf("RECEIVED SIGNAL: %s", s)
+		quitFunc()
+		os.Exit(1)
+	}()
 
 	start <- true
 
@@ -59,6 +72,7 @@ func main() {
 		case <-start:
 			sendTenRequests(start)
 		case <-quit:
+			close(start)
 			close(start)
 			return
 		}
@@ -93,16 +107,10 @@ func sendSingleRequest(page int, wg *sync.WaitGroup) {
 		queryParameter+utils.IntToStr(page)+"&per_page=100",
 		nil,
 	)
-	if reqErr != nil {
-		log.Println(reqErr, "REQ ERR")
-		return
-	}
+	utils.HandleErrEXIT(reqErr, "REQ ERR")
 
 	_, respErr := gh.DoJson(req, &body)
-	if respErr != nil {
-		log.Println(respErr, "RESP ERR")
-		return
-	}
+	utils.HandleErrEXIT(respErr, "RESP ERR")
 
 	body.StoreToRedis()
 }
@@ -115,7 +123,9 @@ func startDependencySearch(start chan bool) {
 		runBFS(key)
 	}
 
-	fmt.Printf("REQUESTS MADE: %d\n", gh.RequestsMade())
+	log.Printf("CYCLE DONE! REQUESTS MADE: %d\n", gh.RequestsMade())
+
+	keys = []string{}
 
 	time.Sleep(time.Hour * 6)
 	start <- true
@@ -156,9 +166,6 @@ func runBFS(key string) {
 			modules = modules[1:]
 		}
 	}
-	fmt.Println(modules, item)
-
-	fmt.Printf("==============DONE: %s==============\n", key)
 }
 
 func getItemFromRedis(key string) (structs.Item, error) {
@@ -168,15 +175,14 @@ func getItemFromRedis(key string) (structs.Item, error) {
 	object, redisErr := redisClient.HGet("go-api", key).Result()
 
 	if redisErr != nil {
-		fmt.Println(redisErr)
+		utils.HandleErrPANIC(redisErr, "REDIS ERR")
 		return item, nil
 	}
 
 	unmarshalErr := json.Unmarshal([]byte(object), &item)
 
 	if unmarshalErr != nil {
-		fmt.Println(key, item)
-		log.Println(unmarshalErr, "UNMARSHALL ERR")
+		utils.HandleErrPANIC(unmarshalErr, "UNMARSHALL ERR")
 		return item, unmarshalErr
 	}
 
@@ -185,8 +191,7 @@ func getItemFromRedis(key string) (structs.Item, error) {
 
 func getModules(input string, ghErr error) []*structs.Item {
 	if ghErr != nil {
-		fmt.Println(input)
-		log.Println(ghErr, "GH ERROR")
+		utils.HandleErrPANIC(ghErr, "GH ERROR")
 	}
 
 	result := []*structs.Item{}
@@ -206,7 +211,6 @@ func getModules(input string, ghErr error) []*structs.Item {
 			matches := regex.FindStringSubmatch(line)
 
 			if len(matches) > 0 {
-				// fmt.Println(matches[2])
 				set[matches[2]] = true
 			}
 		}
@@ -230,14 +234,14 @@ func createItem(key string) (structs.Item, error) {
 	req, reqErr := gh.Request("GET", "/repos/"+key, "", nil)
 
 	if reqErr != nil {
-		log.Println(reqErr, "REQ ERR 2")
+		utils.HandleErrPANIC(reqErr, "REQ ERR 2")
 		return item, reqErr
 	}
 
 	resp, respErr := gh.DoJson(req, &item)
 
 	if respErr != nil {
-		log.Println(respErr, "RESP ERR 2")
+		utils.HandleErrPANIC(respErr, "RESP ERR 2")
 		return item, respErr
 	}
 

@@ -3,9 +3,6 @@ package client
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
-
-	"runtime"
 
 	"io"
 	"io/ioutil"
@@ -132,7 +129,7 @@ func checkRateLimit(rateLimt, rateLimtReset string) {
 	reset, _ := utils.StrToInt(rateLimtReset)
 	timeLeft := int64(reset) - time.Now().Unix()
 
-	fmt.Printf("REQUEST: %d\tLIMIT: %d\t RESET: %d\t TIME BEFORE RESET: %d\tRUNNING GOROUTINES: %d\n", requests, limit, reset, timeLeft, runtime.NumGoroutine())
+	// fmt.Printf("REQUEST: %d\tLIMIT: %d\t RESET: %d\t TIME BEFORE RESET: %d\tRUNNING GOROUTINES: %d\n", requests, limit, reset, timeLeft, runtime.NumGoroutine())
 
 	time.Sleep(setInterval(timeLeft, limit))
 }

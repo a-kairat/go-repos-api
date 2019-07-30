@@ -5,17 +5,36 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
 
 	database "github.com/a-sube/go-repos-api/db"
+	"github.com/go-redis/redis"
 
 	"github.com/gorilla/mux"
 )
 
 var (
-	db = database.Connect()
+	db          = database.Connect()
+	redisClient = redis.NewClient(&redis.Options{
+		Addr:     "localhost:6379",
+		Password: "",
+		DB:       0,
+	})
 )
 
 func main() {
+
+	sigs := make(chan os.Signal, 1)
+
+	signal.Notify(sigs)
+
+	go func() {
+		s := <-sigs
+		log.Printf("RECEIVED SIGNAL: %s", s)
+		os.Exit(1)
+	}()
+
 	router := mux.NewRouter()
 
 	router.HandleFunc("/", root)
@@ -56,10 +75,10 @@ func module(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "Error: Module not found")
 			return
 		}
-
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprintf(w, repo)
 		return
+
 	}
 
 	w.WriteHeader(http.StatusNotFound)
