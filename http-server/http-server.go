@@ -69,14 +69,23 @@ func module(w http.ResponseWriter, r *http.Request) {
 	recursive := r.URL.Query().Get("recursive")
 	if val, ok := vars["module"]; ok {
 
-		repo, err := database.SelectModule(db, val, recursive)
+		key := recursive + val
+		cached, err := redisClient.Get(key).Result()
+
 		if err != nil {
-			w.WriteHeader(http.StatusNotFound)
-			fmt.Fprintf(w, "Error: Module not found")
+			repo, err := database.SelectModule(db, val, recursive)
+			if err != nil {
+				w.WriteHeader(http.StatusNotFound)
+				fmt.Fprintf(w, "Error: Module not found")
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprintf(w, repo)
 			return
 		}
+
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, repo)
+		fmt.Fprintf(w, cached)
 		return
 
 	}

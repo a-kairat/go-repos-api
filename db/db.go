@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/a-sube/go-repos-api/structs"
 	"github.com/a-sube/go-repos-api/utils"
@@ -202,6 +203,9 @@ func SelectModule(db *pg.DB, name, level string) (string, error) {
 	j, _ := json.MarshalIndent(dbResponse, "", "  ")
 
 	jString := string(j)
+
+	key := level + name
+	redisClient.Set(key, jString, time.Hour)
 
 	return jString, nil
 }
