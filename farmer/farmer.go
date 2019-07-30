@@ -134,8 +134,8 @@ func startDependencySearch(start chan bool) {
 func runBFS(key string) {
 
 	item, _ := getItemFromRedis(key)
-
-	modules := getModules(gh.GetRawFile("/repos/" + key + "/contents/go.mod"))
+	rawFiles, err := gh.GetRawFile("/repos/" + key + "/contents/go.mod")
+	modules := getModules(rawFiles, err, key)
 	item.Modules = modules
 	database.Insert(db, item)
 
@@ -144,13 +144,10 @@ func runBFS(key string) {
 	for len(modules) > 0 {
 		childItem := modules[0]
 
-		// if v, ok := seen[childItem.FullName]; ok {
-		// 	fmt.Println(v)
-		// }
-
 		if _, ok := seen[childItem.FullName]; !ok {
+			childRawFiles, err := gh.GetRawFile("/repos/" + childItem.FullName + "/contents/go.mod")
 
-			childModules := getModules(gh.GetRawFile("/repos/" + childItem.FullName + "/contents/go.mod"))
+			childModules := getModules(childRawFiles, err, childItem.FullName)
 
 			childItem.Modules = childModules
 
@@ -189,7 +186,7 @@ func getItemFromRedis(key string) (structs.Item, error) {
 	return item, nil
 }
 
-func getModules(input string, ghErr error) []*structs.Item {
+func getModules(input string, ghErr error, key string) []*structs.Item {
 	if ghErr != nil {
 		utils.HandleErrPANIC(ghErr, "GH ERROR")
 	}
@@ -210,7 +207,7 @@ func getModules(input string, ghErr error) []*structs.Item {
 
 			matches := regex.FindStringSubmatch(line)
 
-			if len(matches) > 0 {
+			if len(matches) > 0 && matches[2] != key {
 				set[matches[2]] = true
 			}
 		}
