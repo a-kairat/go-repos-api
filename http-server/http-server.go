@@ -8,6 +8,8 @@ import (
 	"os"
 	"os/signal"
 
+	"github.com/a-sube/go-repos-api/utils"
+
 	database "github.com/a-sube/go-repos-api/db"
 	"github.com/go-redis/redis"
 
@@ -66,14 +68,22 @@ func root(w http.ResponseWriter, r *http.Request) {
 
 func module(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	recursive := r.URL.Query().Get("recursive")
+	level := r.URL.Query().Get("recursive")
 	if val, ok := vars["module"]; ok {
 
-		key := recursive + val
+		level, levelErr := utils.CheckLevel(level)
+
+		if levelErr != nil {
+			w.WriteHeader(http.StatusNotFound)
+			fmt.Fprintf(w, "Error: Invalid query")
+			return
+		}
+
+		key := level + val
 		cached, err := redisClient.Get(key).Result()
 
 		if err != nil {
-			repo, err := database.SelectModule(db, val, recursive)
+			repo, err := database.SelectModule(db, val, level)
 			if err != nil {
 				w.WriteHeader(http.StatusNotFound)
 				fmt.Fprintf(w, "Error: Module not found")

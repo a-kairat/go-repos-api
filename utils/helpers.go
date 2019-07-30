@@ -18,3 +18,24 @@ func StrToInt(str string) (int, error) {
 	}
 	return n, nil
 }
+
+func CheckLevel(level string) (string, error) {
+	if level == "" {
+		level = "1"
+	}
+
+	if level == "max" {
+		level = "9"
+	}
+
+	rLevel, lErr := StrToInt(level)
+	if lErr != nil {
+		return "", fmt.Errorf("Invalid level")
+	}
+
+	if rLevel > 9 {
+		level = "9"
+	}
+
+	return level, nil
+}

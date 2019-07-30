@@ -177,18 +177,11 @@ func SelectModule(db *pg.DB, name, level string) (string, error) {
 
 	var repos []Repo
 	// repo := new(Repo)
-	if level == "" {
-		level = "1"
-	}
 
-	if level == "max" {
-		level = "9"
-	}
-
-	rLevel, lErr := utils.StrToInt(level)
-	if lErr != nil {
-		return "", fmt.Errorf("Recursion level")
-	}
+	rLevel, _ := utils.StrToInt(level)
+	// if lErr != nil {
+	// 	return "", fmt.Errorf("Invalid level")
+	// }
 
 	SelectALL(db, name, &repos)
 	repos, reposErr := getRecursiveModulesForEach(db, repos, rLevel)
