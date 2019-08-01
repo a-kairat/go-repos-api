@@ -25,7 +25,7 @@ func CheckLevel(level string) (string, error) {
 	}
 
 	if level == "max" {
-		level = "9"
+		level = "5"
 	}
 
 	rLevel, lErr := StrToInt(level)
@@ -33,8 +33,8 @@ func CheckLevel(level string) (string, error) {
 		return "", fmt.Errorf("Invalid level")
 	}
 
-	if rLevel > 9 {
-		level = "9"
+	if rLevel > 5 {
+		level = "5"
 	}
 
 	return level, nil

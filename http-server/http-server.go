@@ -80,8 +80,9 @@ func module(w http.ResponseWriter, r *http.Request) {
 		}
 
 		key := level + val
+		fmt.Println(key)
 		cached, err := redisClient.Get(key).Result()
-
+		fmt.Println(len(cached))
 		if err != nil {
 			repo, err := database.SelectModule(db, val, level)
 			if err != nil {

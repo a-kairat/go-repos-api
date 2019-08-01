@@ -1,6 +1,8 @@
 package database
 
 import (
+	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -176,12 +178,10 @@ func SelectLimitOffset(db *pg.DB, page string) ([]Repo, error) {
 func SelectModule(db *pg.DB, name, level string) (string, error) {
 
 	var repos []Repo
-	// repo := new(Repo)
+	var b bytes.Buffer
+	gz := gzip.NewWriter(&b)
 
 	rLevel, _ := utils.StrToInt(level)
-	// if lErr != nil {
-	// 	return "", fmt.Errorf("Invalid level")
-	// }
 
 	SelectALL(db, name, &repos)
 	repos, reposErr := getRecursiveModulesForEach(db, repos, rLevel)
@@ -193,8 +193,11 @@ func SelectModule(db *pg.DB, name, level string) (string, error) {
 		Items: repos,
 	}
 
-	j, _ := json.MarshalIndent(dbResponse, "", "  ")
-
+	j, _ := json.Marshal(dbResponse)
+	if _, err := gz.Write(j); err != nil {
+		panic(err)
+	}
+	fmt.Println(b.Len(), "BYTES")
 	jString := string(j)
 
 	key := level + name
@@ -204,8 +207,8 @@ func SelectModule(db *pg.DB, name, level string) (string, error) {
 }
 
 func getRecursiveModulesForEach(db *pg.DB, repos []Repo, level int) ([]Repo, error) {
-	if level > 9 {
-		level = 9
+	if level > 5 {
+		level = 5
 	}
 
 	if level > 0 {
@@ -238,7 +241,7 @@ func queryModules(db *pg.DB, fullName string, repo Repo) (Repo, error) {
 		Select()
 
 	if err != nil {
-		return Repo{}, fmt.Errorf("item not found %v", fullName)
+		return repo, fmt.Errorf("item not found %v", fullName)
 	}
 
 	return repo, nil

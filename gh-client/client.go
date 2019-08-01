@@ -3,6 +3,7 @@ package client
 import (
 	"bytes"
 	"encoding/json"
+	"log"
 
 	"io"
 	"io/ioutil"
@@ -136,6 +137,7 @@ func checkRateLimit(rateLimt, rateLimtReset string) {
 
 func setInterval(timeLeft int64, limit int) time.Duration {
 	if limit <= 3 {
+		log.Printf("GOING TO SLEEP FOR %v, REQUESTS MADE: %v\n", time.Second*time.Duration(timeLeft), requests)
 		return time.Second * time.Duration(timeLeft)
 	}
 
