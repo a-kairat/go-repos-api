@@ -53,6 +53,7 @@ type Item struct {
 	Modules         []*Item `json:"modules"`
 }
 
+// StoreToRedis stores received repos to redis
 func (data *Body) StoreToRedis() error {
 	for _, v := range data.Items {
 
@@ -65,4 +66,12 @@ func (data *Body) StoreToRedis() error {
 	}
 
 	return nil
+}
+
+// Normalize sets Name, FullName and Description fields to lower case.
+// Sets Description field to Title case.
+func (item *Item) Normalize() {
+	item.Name = strings.ToLower(item.Name)
+	item.FullName = strings.ToLower(item.FullName)
+	item.Description = strings.Title(strings.ToLower(item.Description))
 }

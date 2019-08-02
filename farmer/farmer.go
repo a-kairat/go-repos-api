@@ -120,7 +120,7 @@ func startDependencySearch(start chan bool) {
 	keys, _ := redisClient.HKeys("go-api").Result()
 
 	for _, key := range keys {
-		runBFS(key)
+		runBFSlike(key)
 	}
 
 	log.Printf("CYCLE DONE! REQUESTS MADE: %d\n", gh.RequestsMade())
@@ -131,12 +131,14 @@ func startDependencySearch(start chan bool) {
 	start <- true
 }
 
-func runBFS(key string) {
+func runBFSlike(key string) {
 
 	item, _ := getItemFromRedis(key)
 	rawFiles, err := gh.GetRawFile("/repos/" + key + "/contents/go.mod")
 	modules := getModules(rawFiles, err, key)
 	item.Modules = modules
+	item.Normalize()
+
 	database.Insert(db, item)
 
 	seen := make(map[string]bool)
@@ -150,7 +152,7 @@ func runBFS(key string) {
 			childModules := getModules(childRawFiles, err, childItem.FullName)
 
 			childItem.Modules = childModules
-
+			childItem.Normalize()
 			database.Insert(db, *childItem)
 
 			seen[childItem.FullName] = true
@@ -186,6 +188,8 @@ func getItemFromRedis(key string) (structs.Item, error) {
 	return item, nil
 }
 
+// input raw file example: https://github.com/hashicorp/consul/blob/master/go.mod
+// key - owner/repo. example: hashicorp/consul
 func getModules(input string, ghErr error, key string) []*structs.Item {
 	if ghErr != nil {
 		utils.HandleErrPANIC(ghErr, "GH ERROR")
@@ -196,6 +200,7 @@ func getModules(input string, ghErr error, key string) []*structs.Item {
 	if !strings.HasPrefix(input, `{"message":"Not Found"`) {
 
 		set := make(map[string]bool)
+		// grab only modules that start with pattern `github.com/<owner>/<repo>`
 		regex := regexp.MustCompile(`(^.*)?github\.com\/([-_\w]+\/[-_\w]+)`)
 
 		for _, line := range strings.Split(input, "\n") {
@@ -207,6 +212,8 @@ func getModules(input string, ghErr error, key string) []*structs.Item {
 
 			matches := regex.FindStringSubmatch(line)
 
+			// if found matches and matched string is not a repo itself
+			// add to set
 			if len(matches) > 0 && matches[2] != key {
 				set[matches[2]] = true
 			}
@@ -225,6 +232,7 @@ func getModules(input string, ghErr error, key string) []*structs.Item {
 	return result
 }
 
+// Gets repo from github. Returns Item struct or an error
 func createItem(key string) (structs.Item, error) {
 	var item structs.Item
 

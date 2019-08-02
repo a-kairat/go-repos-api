@@ -19,6 +19,9 @@ func StrToInt(str string) (int, error) {
 	return n, nil
 }
 
+// CheckLevel checks depth level in received query parameter.
+// If no level provided sets it to 1. If level is greater then 5 or it's a `max`
+// sets it to 5 (max depth level). If invalid query parameter received returns error.
 func CheckLevel(level string) (string, error) {
 	if level == "" {
 		level = "1"

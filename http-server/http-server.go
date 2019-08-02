@@ -8,12 +8,12 @@ import (
 	"os"
 	"os/signal"
 
+	database "github.com/a-sube/go-repos-api/db"
 	"github.com/a-sube/go-repos-api/utils"
 
-	database "github.com/a-sube/go-repos-api/db"
 	"github.com/go-redis/redis"
-
 	"github.com/gorilla/mux"
+	"github.com/rs/cors"
 )
 
 var (
@@ -22,6 +22,10 @@ var (
 		Addr:     "localhost:6379",
 		Password: "",
 		DB:       0,
+	})
+
+	c = cors.New(cors.Options{
+		AllowedOrigins: []string{"*"},
 	})
 )
 
@@ -49,13 +53,14 @@ func main() {
 }
 
 func root(w http.ResponseWriter, r *http.Request) {
-
+	enableCors(&w)
 	page := r.URL.Query().Get("page")
+	limit := r.URL.Query().Get("limit")
 	if page == "" {
 		page = "1"
 	}
-
-	resp, err := database.SelectLimitOffset(db, page)
+	fmt.Println(page)
+	resp, err := database.SelectLimitOffset(db, page, limit)
 
 	if err != nil {
 		panic(err)
@@ -67,12 +72,14 @@ func root(w http.ResponseWriter, r *http.Request) {
 }
 
 func module(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
 	vars := mux.Vars(r)
 	level := r.URL.Query().Get("recursive")
 	if val, ok := vars["module"]; ok {
 
-		level, levelErr := utils.CheckLevel(level)
+		fmt.Println(val)
 
+		level, levelErr := utils.CheckLevel(level)
 		if levelErr != nil {
 			w.WriteHeader(http.StatusNotFound)
 			fmt.Fprintf(w, "Error: Invalid query")
@@ -80,21 +87,35 @@ func module(w http.ResponseWriter, r *http.Request) {
 		}
 
 		key := level + val
-		fmt.Println(key)
 		cached, err := redisClient.Get(key).Result()
-		fmt.Println(len(cached))
+
 		if err != nil {
-			repo, err := database.SelectModule(db, val, level)
-			if err != nil {
-				w.WriteHeader(http.StatusNotFound)
-				fmt.Fprintf(w, "Error: Module not found")
+			// if parameter is a module name
+			if _, idErr := utils.StrToInt(val); idErr != nil {
+				repo, err := database.SelectModule(db, "name", val, level)
+				if err != nil {
+					w.WriteHeader(http.StatusNotFound)
+					fmt.Fprintf(w, "Error: Module not found")
+					return
+				}
+
+				w.WriteHeader(http.StatusOK)
+				fmt.Fprintf(w, repo)
+				return
+			} else {
+				// if parameter is a module id
+				repo, err := database.SelectModule(db, "id", val, level)
+				if err != nil {
+					w.WriteHeader(http.StatusNotFound)
+					fmt.Fprintf(w, "Error: Module not found")
+					return
+				}
+
+				w.WriteHeader(http.StatusOK)
+				fmt.Fprintf(w, repo)
 				return
 			}
-			w.WriteHeader(http.StatusOK)
-			fmt.Fprintf(w, repo)
-			return
 		}
-
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprintf(w, cached)
 		return
@@ -105,6 +126,7 @@ func module(w http.ResponseWriter, r *http.Request) {
 }
 
 func search(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
 	vars := mux.Vars(r)
 
 	if val, ok := vars["term"]; ok {
@@ -122,4 +144,8 @@ func search(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNotFound)
+}
+
+func enableCors(w *http.ResponseWriter) {
+	(*w).Header().Set("Access-Control-Allow-Origin", "*")
 }

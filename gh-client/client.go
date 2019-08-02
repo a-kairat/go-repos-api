@@ -3,7 +3,9 @@ package client
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"log"
+	"runtime"
 
 	"io"
 	"io/ioutil"
@@ -66,6 +68,7 @@ func (gh *GitHubClient) DoJson(req *http.Request, v interface{}) (*http.Response
 	}
 
 	defer resp.Body.Close()
+	jsonErr := json.NewDecoder(resp.Body).Decode(v)
 
 	if search == 0 {
 		if len(resp.Header["X-Ratelimit-Remaining"]) > 0 &&
@@ -77,7 +80,6 @@ func (gh *GitHubClient) DoJson(req *http.Request, v interface{}) (*http.Response
 		}
 	}
 
-	jsonErr := json.NewDecoder(resp.Body).Decode(v)
 	return resp, jsonErr
 }
 
@@ -90,6 +92,11 @@ func (gh *GitHubClient) DoRaw(req *http.Request, v interface{}) (string, error) 
 
 	defer resp.Body.Close()
 
+	body, bodyErr := ioutil.ReadAll(resp.Body)
+	if bodyErr != nil {
+		return "", bodyErr
+	}
+
 	if search == 0 {
 		if len(resp.Header["X-Ratelimit-Remaining"]) > 0 &&
 			len(resp.Header["X-Ratelimit-Reset"]) > 0 {
@@ -98,11 +105,6 @@ func (gh *GitHubClient) DoRaw(req *http.Request, v interface{}) (string, error) 
 				resp.Header["X-Ratelimit-Reset"][0],
 			)
 		}
-	}
-
-	body, bodyErr := ioutil.ReadAll(resp.Body)
-	if bodyErr != nil {
-		return "", bodyErr
 	}
 
 	return string(body), nil
@@ -130,7 +132,7 @@ func checkRateLimit(rateLimt, rateLimtReset string) {
 	reset, _ := utils.StrToInt(rateLimtReset)
 	timeLeft := int64(reset) - time.Now().Unix()
 
-	// fmt.Printf("REQUEST: %d\tLIMIT: %d\t RESET: %d\t TIME BEFORE RESET: %d\tRUNNING GOROUTINES: %d\n", requests, limit, reset, timeLeft, runtime.NumGoroutine())
+	fmt.Printf("REQUEST: %d\tLIMIT: %d\t RESET: %d\t TIME BEFORE RESET: %d\tRUNNING GOROUTINES: %d\n", requests, limit, reset, timeLeft, runtime.NumGoroutine())
 
 	time.Sleep(setInterval(timeLeft, limit))
 }
