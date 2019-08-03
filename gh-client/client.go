@@ -4,40 +4,62 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
-	"runtime"
 
 	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"sync/atomic"
 	"time"
 
 	"github.com/a-sube/go-repos-api/utils"
 )
 
-var (
-	search   int32
-	requests int32
-)
+var GH = GitHubClient{
+	ghClient: &http.Client{},
+	ghURL: &url.URL{
+		Scheme: "https",
+		Host:   "api.github.com",
+	},
+}
 
 // GitHubClient is a github http client
 type GitHubClient struct {
-	GHclient *http.Client
-	GHURL    *url.URL // string // "https://api.github.com/"
+	ghClient  *http.Client
+	ghURL     *url.URL // string // "https://api.github.com/"
+	limit     int
+	requests  int
+	resetTime int64
+	initial   bool
+}
+
+func (gh *GitHubClient) checkLimit() {
+	if gh.limit <= 2 {
+		timeLeft := gh.resetTime - time.Now().Unix()
+		time.Sleep(time.Second * time.Duration(timeLeft))
+	}
+}
+
+func (gh *GitHubClient) setLimit(xRemaining, xTimeReset string) {
+	limit, _ := utils.StrToInt(xRemaining)
+	reset, _ := utils.StrToInt(xTimeReset)
+	gh.limit = limit
+	gh.resetTime = int64(reset)
+}
+
+func (gh *GitHubClient) RequestsMade() int {
+	return gh.requests
 }
 
 func (gh *GitHubClient) Request(method, path, query string, body interface{}) (*http.Request, error) {
 
 	rel := &url.URL{Path: path}
-	url := gh.GHURL.ResolveReference(rel)
+	url := gh.ghURL.ResolveReference(rel)
 
 	if query != "" {
 		url.RawQuery = query
-		atomic.StoreInt32(&search, 1)
+		gh.initial = true
 	} else {
-		atomic.StoreInt32(&search, 0)
+		gh.initial = false
 	}
 
 	var buf io.ReadWriter
@@ -62,7 +84,10 @@ func (gh *GitHubClient) Request(method, path, query string, body interface{}) (*
 
 func (gh *GitHubClient) DoJson(req *http.Request, v interface{}) (*http.Response, error) {
 
-	resp, respErr := gh.GHclient.Do(req)
+	gh.checkLimit()
+	gh.requests++
+
+	resp, respErr := gh.ghClient.Do(req)
 	if respErr != nil {
 		return nil, respErr
 	}
@@ -70,14 +95,16 @@ func (gh *GitHubClient) DoJson(req *http.Request, v interface{}) (*http.Response
 	defer resp.Body.Close()
 	jsonErr := json.NewDecoder(resp.Body).Decode(v)
 
-	if search == 0 {
+	// in case we are not doing initial 10 requests
+	if !gh.initial {
 		if len(resp.Header["X-Ratelimit-Remaining"]) > 0 &&
 			len(resp.Header["X-Ratelimit-Reset"]) > 0 {
-			checkRateLimit(
+			gh.setLimit(
 				resp.Header["X-Ratelimit-Remaining"][0],
 				resp.Header["X-Ratelimit-Reset"][0],
 			)
 		}
+		gh.LogRequest()
 	}
 
 	return resp, jsonErr
@@ -85,7 +112,10 @@ func (gh *GitHubClient) DoJson(req *http.Request, v interface{}) (*http.Response
 
 func (gh *GitHubClient) DoRaw(req *http.Request, v interface{}) (string, error) {
 
-	resp, respErr := gh.GHclient.Do(req)
+	gh.checkLimit()
+	gh.requests++
+
+	resp, respErr := gh.ghClient.Do(req)
 	if respErr != nil {
 		return "", respErr
 	}
@@ -97,20 +127,21 @@ func (gh *GitHubClient) DoRaw(req *http.Request, v interface{}) (string, error) 
 		return "", bodyErr
 	}
 
-	if search == 0 {
+	if !gh.initial {
 		if len(resp.Header["X-Ratelimit-Remaining"]) > 0 &&
 			len(resp.Header["X-Ratelimit-Reset"]) > 0 {
-			checkRateLimit(
+			gh.setLimit(
 				resp.Header["X-Ratelimit-Remaining"][0],
 				resp.Header["X-Ratelimit-Reset"][0],
 			)
 		}
+		gh.LogRequest()
 	}
 
 	return string(body), nil
 }
 
-func (gh *GitHubClient) GetRawFile(path string) (string, error) {
+func (gh *GitHubClient) GetRawContent(path string) (string, error) {
 	req, reqErr := gh.Request("GET", path, "", nil)
 	if reqErr != nil {
 		return "", reqErr
@@ -122,26 +153,19 @@ func (gh *GitHubClient) GetRawFile(path string) (string, error) {
 	return respString, respErr
 }
 
-func (gh *GitHubClient) RequestsMade() int32 {
-	return requests
-}
-
-func checkRateLimit(rateLimt, rateLimtReset string) {
-	atomic.AddInt32(&requests, 1)
-	limit, _ := utils.StrToInt(rateLimt)
-	reset, _ := utils.StrToInt(rateLimtReset)
-	timeLeft := int64(reset) - time.Now().Unix()
-
-	fmt.Printf("REQUEST: %d\tLIMIT: %d\t RESET: %d\t TIME BEFORE RESET: %d\tRUNNING GOROUTINES: %d\n", requests, limit, reset, timeLeft, runtime.NumGoroutine())
-
-	time.Sleep(setInterval(timeLeft, limit))
-}
-
-func setInterval(timeLeft int64, limit int) time.Duration {
-	if limit <= 3 {
-		log.Printf("GOING TO SLEEP FOR %v, REQUESTS MADE: %v\n", time.Second*time.Duration(timeLeft), requests)
-		return time.Second * time.Duration(timeLeft)
+func (gh *GitHubClient) GetHTML(path string) (string, error) {
+	req, reqErr := gh.Request("GET", path, "", nil)
+	if reqErr != nil {
+		return "", reqErr
 	}
 
-	return time.Second * 0
+	req.Header.Set("Accept", "application/vnd.github.v3.html")
+	respString, respErr := gh.DoRaw(req, nil)
+
+	return respString, respErr
+}
+
+func (gh *GitHubClient) LogRequest() {
+	timeLeft := gh.resetTime - time.Now().Unix()
+	fmt.Printf("requests: %v\tlimit: %v\treset: %v\ttime before reset: %v\n", gh.requests, gh.limit, gh.resetTime, timeLeft)
 }

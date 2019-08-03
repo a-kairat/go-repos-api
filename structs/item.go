@@ -50,6 +50,7 @@ type Item struct {
 	StargazersCount int     `json:"stargazers_count"`
 	ForksCount      int     `json:"forks_count"`
 	Owner           Owner   `json:"owner"`
+	Readme          string  `json:"readme"`
 	Modules         []*Item `json:"modules"`
 }
 

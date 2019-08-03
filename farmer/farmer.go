@@ -33,9 +33,6 @@ var (
 	db = database.Connect()
 
 	queryParameter = "q=go+package+in:readme+language:go&sort=stars&order=desc&page="
-
-	// start = make(chan bool, 1)
-	// quit  = make(chan bool, 1)
 )
 
 func main() {

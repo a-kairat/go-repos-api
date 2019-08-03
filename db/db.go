@@ -33,6 +33,7 @@ type Repo struct {
 	StargazersCount int    `json:"stargazers_count" sql:",nullable"`
 	ForksCount      int    `json:"forks_count" sql:",nullable"`
 	AvatarURL       string `json:"avatar_url" sql:",nullable"`
+	Readme          string `json:"readme" sql:",nullable"`
 	Modules         []Repo `json:"modules" pg:"many2many:repo_to_repos,joinFK:module_id,zeroable"`
 }
 
@@ -94,6 +95,7 @@ func Insert(db *pg.DB, v structs.Item) {
 		StargazersCount: v.StargazersCount,
 		ForksCount:      v.ForksCount,
 		AvatarURL:       v.Owner.AvatarURL,
+		Readme:          v.Readme,
 	}
 
 	_, err := db.Model(repo).
@@ -112,6 +114,7 @@ func Insert(db *pg.DB, v structs.Item) {
 			StargazersCount: mod.StargazersCount,
 			ForksCount:      mod.ForksCount,
 			AvatarURL:       mod.Owner.AvatarURL,
+			Readme:          mod.Readme,
 		}
 
 		_, err := db.Model(module).
