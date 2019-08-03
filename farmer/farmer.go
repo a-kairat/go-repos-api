@@ -13,9 +13,6 @@ import (
 	"strings"
 	"sync"
 
-	"net/http"
-	"net/url"
-
 	database "github.com/a-sube/go-repos-api/db"
 	client "github.com/a-sube/go-repos-api/gh-client"
 
@@ -25,13 +22,7 @@ import (
 )
 
 var (
-	gh = client.GitHubClient{
-		GHclient: &http.Client{},
-		GHURL: &url.URL{
-			Scheme: "https",
-			Host:   "api.github.com",
-		},
-	}
+	gh = client.GH
 
 	redisClient = redis.NewClient(&redis.Options{
 		Addr:     "localhost:6379",
@@ -43,8 +34,8 @@ var (
 
 	queryParameter = "q=go+package+in:readme+language:go&sort=stars&order=desc&page="
 
-	start = make(chan bool, 1)
-	quit  = make(chan bool, 1)
+	// start = make(chan bool, 1)
+	// quit  = make(chan bool, 1)
 )
 
 func main() {
@@ -61,29 +52,14 @@ func main() {
 	go func() {
 		s := <-sigs
 		log.Printf("RECEIVED SIGNAL: %s", s)
-		quitFunc()
+
 		os.Exit(1)
 	}()
 
-	start <- true
-
-	for {
-		select {
-		case <-start:
-			sendTenRequests(start)
-		case <-quit:
-			close(start)
-			close(start)
-			return
-		}
-	}
+	sendTenRequests()
 }
 
-func quitFunc() {
-	quit <- true
-}
-
-func sendTenRequests(start chan bool) {
+func sendTenRequests() {
 
 	wg := &sync.WaitGroup{}
 	for i := 1; i <= 10; i++ {
@@ -92,7 +68,8 @@ func sendTenRequests(start chan bool) {
 	}
 	wg.Wait()
 
-	startDependencySearch(start)
+	startDependencySearch()
+
 }
 
 func sendSingleRequest(page int, wg *sync.WaitGroup) {
@@ -115,7 +92,7 @@ func sendSingleRequest(page int, wg *sync.WaitGroup) {
 	body.StoreToRedis()
 }
 
-func startDependencySearch(start chan bool) {
+func startDependencySearch() {
 
 	keys, _ := redisClient.HKeys("go-api").Result()
 
@@ -128,15 +105,20 @@ func startDependencySearch(start chan bool) {
 	keys = []string{}
 
 	time.Sleep(time.Hour * 6)
-	start <- true
+	sendTenRequests()
 }
 
 func runBFSlike(key string) {
 
 	item, _ := getItemFromRedis(key)
-	rawFiles, err := gh.GetRawFile("/repos/" + key + "/contents/go.mod")
+	rawFiles, err := gh.GetRawContent("/repos/" + key + "/contents/go.mod")
+
 	modules := getModules(rawFiles, err, key)
 	item.Modules = modules
+
+	readmeFile := getReadmeHTML(key)
+	item.Readme = readmeFile
+
 	item.Normalize()
 
 	database.Insert(db, item)
@@ -147,18 +129,21 @@ func runBFSlike(key string) {
 		childItem := modules[0]
 
 		if _, ok := seen[childItem.FullName]; !ok {
-			childRawFiles, err := gh.GetRawFile("/repos/" + childItem.FullName + "/contents/go.mod")
+			childRawFiles, err := gh.GetRawContent("/repos/" + childItem.FullName + "/contents/go.mod")
 
 			childModules := getModules(childRawFiles, err, childItem.FullName)
-
 			childItem.Modules = childModules
+
+			childReadmeFile := getReadmeHTML(childItem.FullName)
+			childItem.Readme = childReadmeFile
+
 			childItem.Normalize()
+
 			database.Insert(db, *childItem)
 
 			seen[childItem.FullName] = true
 
 			modules = append(modules, childModules...)
-
 		}
 
 		if len(modules) > 0 {
@@ -255,4 +240,12 @@ func createItem(key string) (structs.Item, error) {
 	}
 
 	return item, fmt.Errorf("Error in reponse")
+}
+
+func getReadmeHTML(key string) string {
+	readme, err := gh.GetHTML("/repos/" + key + "/readme")
+	if err != nil {
+		return ""
+	}
+	return readme
 }
