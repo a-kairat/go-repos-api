@@ -30,28 +30,23 @@ var (
 		DB:       0,
 	})
 
-	db = database.Connect()
-
 	queryParameter = "q=go+package+in:readme+language:go&sort=stars&order=desc&page="
 )
 
 func main() {
 
-	utils.CheckEnvVars()
-
-	err := database.CreateSchema(db)
-	utils.HandleErrEXIT(err, "CREATE SCHEMA")
+	utils.CheckEnvVars(true, true, true)
 
 	sigs := make(chan os.Signal, 1)
-
-	signal.Notify(sigs)
+	signal.Notify(sigs, os.Interrupt)
 
 	go func() {
 		s := <-sigs
 		log.Printf("RECEIVED SIGNAL: %s", s)
-
 		os.Exit(1)
 	}()
+
+	database.CreateSchema()
 
 	sendTenRequests()
 }
@@ -118,7 +113,7 @@ func runBFSlike(key string) {
 
 	item.Normalize()
 
-	database.Insert(db, item)
+	database.Insert(item)
 
 	seen := make(map[string]bool)
 
@@ -136,7 +131,7 @@ func runBFSlike(key string) {
 
 			childItem.Normalize()
 
-			database.Insert(db, *childItem)
+			database.Insert(*childItem)
 
 			seen[childItem.FullName] = true
 
@@ -170,8 +165,8 @@ func getItemFromRedis(key string) (structs.Item, error) {
 	return item, nil
 }
 
-// input raw file example: https://github.com/hashicorp/consul/blob/master/go.mod
-// key - owner/repo. example: hashicorp/consul
+// getModules takes string input (example: https://github.com/hashicorp/consul/blob/master/go.mod). Returns slice of
+// key - owner/repo format. (example: hashicorp/consul)
 func getModules(input string, ghErr error, key string) []*structs.Item {
 	if ghErr != nil {
 		utils.HandleErrPANIC(ghErr, "GH ERROR")

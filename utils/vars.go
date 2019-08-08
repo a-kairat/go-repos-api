@@ -15,9 +15,28 @@ var (
 )
 
 // CheckEnvVars checks if ENV vars are set. If not exits process.
-func CheckEnvVars() {
-	if !userOK || !pswdOK || !accessTokenOk {
-		log.Printf("DBUSER: %v\t DBPASSWORD: %v\t GITHUB_ACCESS_TOKEN: %v\n", userOK, pswdOK, accessTokenOk)
+func CheckEnvVars(user, pswd, accessToken bool) {
+
+	if user && pswd && accessToken {
+		if !userOK || !pswdOK || !accessTokenOk {
+			log.Printf("DBUSER: %v\t DBPASSWORD: %v\t GITHUB_ACCESS_TOKEN: %v\n", userOK, pswdOK, accessTokenOk)
+			os.Exit(1)
+		}
+	}
+
+	if user && !userOK {
+		log.Printf("DBUSER: %v\n", userOK)
 		os.Exit(1)
 	}
+
+	if pswd && !pswdOK {
+		log.Printf("DBPASSWORD: %v\n", pswdOK)
+		os.Exit(1)
+	}
+
+	if accessToken && !accessTokenOk {
+		log.Printf("GITHUB_ACCESS_TOKEN: %v\n", accessTokenOk)
+		os.Exit(1)
+	}
+
 }

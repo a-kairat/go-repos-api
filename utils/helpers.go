@@ -1,7 +1,11 @@
 package utils
 
 import (
+	"bytes"
+	"compress/gzip"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"strconv"
 )
 
@@ -41,4 +45,22 @@ func CheckLevel(level string) (string, error) {
 	}
 
 	return level, nil
+}
+
+func Gzip(w io.Writer, data []byte) error {
+	gw, err := gzip.NewWriterLevel(w, gzip.BestSpeed)
+	defer gw.Close()
+	gw.Write(data)
+	return err
+}
+
+func Ungzip(w io.Writer, data []byte) error {
+	gr, err := gzip.NewReader(bytes.NewBuffer(data))
+	defer gr.Close()
+	data, err = ioutil.ReadAll(gr)
+	if err != nil {
+		return err
+	}
+	w.Write(data)
+	return nil
 }
