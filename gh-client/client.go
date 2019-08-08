@@ -85,7 +85,6 @@ func (gh *GitHubClient) Request(method, path, query string, body interface{}) (*
 func (gh *GitHubClient) DoJson(req *http.Request, v interface{}) (*http.Response, error) {
 
 	gh.checkLimit()
-	gh.requests++
 
 	resp, respErr := gh.ghClient.Do(req)
 	if respErr != nil {
@@ -104,16 +103,15 @@ func (gh *GitHubClient) DoJson(req *http.Request, v interface{}) (*http.Response
 				resp.Header["X-Ratelimit-Reset"][0],
 			)
 		}
-		gh.LogRequest()
+		// gh.LogRequest()
 	}
-
+	gh.requests++
 	return resp, jsonErr
 }
 
 func (gh *GitHubClient) DoRaw(req *http.Request, v interface{}) (string, error) {
 
 	gh.checkLimit()
-	gh.requests++
 
 	resp, respErr := gh.ghClient.Do(req)
 	if respErr != nil {
@@ -135,9 +133,9 @@ func (gh *GitHubClient) DoRaw(req *http.Request, v interface{}) (string, error) 
 				resp.Header["X-Ratelimit-Reset"][0],
 			)
 		}
-		gh.LogRequest()
+		// gh.LogRequest()
 	}
-
+	gh.requests++
 	return string(body), nil
 }
 
@@ -161,7 +159,10 @@ func (gh *GitHubClient) GetHTML(path string) (string, error) {
 
 	req.Header.Set("Accept", "application/vnd.github.v3.html")
 	respString, respErr := gh.DoRaw(req, nil)
-
+	if respErr != nil {
+		fmt.Println(path, "FAIL")
+	}
+	fmt.Println(path, "SUCCESS")
 	return respString, respErr
 }
 

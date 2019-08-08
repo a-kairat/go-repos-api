@@ -104,8 +104,9 @@ func runBFSlike(key string) {
 
 	item, _ := getItemFromRedis(key)
 	rawFiles, err := gh.GetRawContent("/repos/" + key + "/contents/go.mod")
+	utils.HandleErrPANIC(err, "GetRawContent")
 
-	modules := getModules(rawFiles, err, key)
+	modules := getModules(rawFiles, key)
 	item.Modules = modules
 
 	readmeFile := getReadmeHTML(key)
@@ -122,12 +123,15 @@ func runBFSlike(key string) {
 
 		if _, ok := seen[childItem.FullName]; !ok {
 			childRawFiles, err := gh.GetRawContent("/repos/" + childItem.FullName + "/contents/go.mod")
+			utils.HandleErrPANIC(err, "GetRawContent")
 
-			childModules := getModules(childRawFiles, err, childItem.FullName)
+			childModules := getModules(childRawFiles, childItem.FullName)
 			childItem.Modules = childModules
 
-			childReadmeFile := getReadmeHTML(childItem.FullName)
-			childItem.Readme = childReadmeFile
+			if childItem.Readme == "" {
+				childReadmeFile := getReadmeHTML(childItem.FullName)
+				childItem.Readme = childReadmeFile
+			}
 
 			childItem.Normalize()
 
@@ -138,9 +142,8 @@ func runBFSlike(key string) {
 			modules = append(modules, childModules...)
 		}
 
-		if len(modules) > 0 {
-			modules = modules[1:]
-		}
+		modules = modules[1:]
+
 	}
 }
 
@@ -167,10 +170,7 @@ func getItemFromRedis(key string) (structs.Item, error) {
 
 // getModules takes string input (example: https://github.com/hashicorp/consul/blob/master/go.mod). Returns slice of
 // key - owner/repo format. (example: hashicorp/consul)
-func getModules(input string, ghErr error, key string) []*structs.Item {
-	if ghErr != nil {
-		utils.HandleErrPANIC(ghErr, "GH ERROR")
-	}
+func getModules(input string, key string) []*structs.Item {
 
 	result := []*structs.Item{}
 
@@ -201,6 +201,7 @@ func getModules(input string, ghErr error, key string) []*structs.Item {
 			if key == "" || itemErr != nil {
 				continue
 			} else {
+				item.Readme = getReadmeHTML(key)
 				result = append(result, &item)
 			}
 		}
@@ -237,6 +238,7 @@ func createItem(key string) (structs.Item, error) {
 func getReadmeHTML(key string) string {
 	readme, err := gh.GetHTML("/repos/" + key + "/readme")
 	if err != nil {
+		fmt.Println(err)
 		return ""
 	}
 	return readme
