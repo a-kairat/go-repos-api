@@ -14,8 +14,7 @@ import (
 )
 
 var (
-	origin, originOK = os.LookupEnv("ORIGIN") // depends
-	upgrader         = websocket.Upgrader{
+	upgrader = websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
 
@@ -27,14 +26,10 @@ var (
 		// A CheckOrigin function should carefully validate the request origin to
 		// prevent cross-site request forgery.
 		CheckOrigin: func(r *http.Request) bool {
-			log.Println(r.Header.Get("Origin"), origin)
-			if !originOK {
-				log.Println("ORIGIN for ws server is not set")
-				os.Exit(1)
-			}
+			log.Println(r.Header.Get("Origin"), utils.ORIGIN)
 
 			// the most simple check origin
-			if r.Header.Get("Origin") == origin {
+			if r.Header.Get("Origin") == utils.ORIGIN {
 				return true
 			}
 
@@ -45,7 +40,7 @@ var (
 
 func main() {
 
-	utils.CheckEnvVars(true, true, false)
+	utils.CheckEnvVars(true, true, false, true)
 
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, os.Interrupt)

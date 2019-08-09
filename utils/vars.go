@@ -12,10 +12,12 @@ var (
 	DBPSWD, pswdOK = os.LookupEnv("DBPASSWORD")
 	// ACCESSTOKEN is github access token
 	ACCESSTOKEN, accessTokenOk = os.LookupEnv("GITHUB_ACCESS_TOKEN")
+	// ORIGIN is a request origin
+	ORIGIN, originOK = os.LookupEnv("ORIGIN") // depends
 )
 
 // CheckEnvVars checks if ENV vars are set. If not exits process.
-func CheckEnvVars(user, pswd, accessToken bool) {
+func CheckEnvVars(user, pswd, accessToken, origin bool) {
 
 	if user && pswd && accessToken {
 		if !userOK || !pswdOK || !accessTokenOk {
@@ -36,6 +38,11 @@ func CheckEnvVars(user, pswd, accessToken bool) {
 
 	if accessToken && !accessTokenOk {
 		log.Printf("GITHUB_ACCESS_TOKEN: %v\n", accessTokenOk)
+		os.Exit(1)
+	}
+
+	if origin && !originOK {
+		log.Printf("ORIGIN: %v\n", originOK)
 		os.Exit(1)
 	}
 
