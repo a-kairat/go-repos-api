@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -123,20 +124,20 @@ func module(w http.ResponseWriter, r *http.Request) {
 		depthLevel := r.URL.Query().Get("depth")
 
 		if depthLevel != "" {
-			// key := fmt.Sprintf("%s-%s", id, depthLevel)
+			key := fmt.Sprintf("%s-%s", id, depthLevel)
 
-			// var byteResult []byte
-			// var result string
-			// byteResult, redisErr := redisClient.Get(key).Bytes()
+			var byteResult []byte
+			var result string
+			byteResult, redisErr := redisClient.Get(key).Bytes()
 
-			// if redisErr != nil {
-			//
-			// } else {
-			// 	var buf bytes.Buffer
-			// 	utils.Ungzip(&buf, byteResult)
-			// 	result = buf.String()
-			// }
-			result := database.SelectByIDWithModules(id, depthLevel)
+			if redisErr != nil {
+
+			} else {
+				var buf bytes.Buffer
+				utils.Ungzip(&buf, byteResult)
+				result = buf.String()
+			}
+			// result := database.SelectByIDWithModules(id, depthLevel)
 			if result != "" {
 				w.WriteHeader(http.StatusOK)
 				_, err := fmt.Fprintf(w, result)
