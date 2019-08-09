@@ -27,7 +27,7 @@ var (
 		// A CheckOrigin function should carefully validate the request origin to
 		// prevent cross-site request forgery.
 		CheckOrigin: func(r *http.Request) bool {
-
+			log.Println(r.Header.Get("Origin"), origin)
 			if !originOK {
 				log.Println("ORIGIN for ws server is not set")
 				os.Exit(1)
