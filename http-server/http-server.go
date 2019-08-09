@@ -131,7 +131,7 @@ func module(w http.ResponseWriter, r *http.Request) {
 			byteResult, redisErr := redisClient.Get(key).Bytes()
 
 			if redisErr != nil {
-
+				result = database.SelectByIDWithModules(id, depthLevel)
 			} else {
 				var buf bytes.Buffer
 				utils.Ungzip(&buf, byteResult)
