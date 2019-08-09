@@ -52,6 +52,7 @@ type Item struct {
 	Owner           Owner   `json:"owner"`
 	Readme          string  `json:"readme"`
 	Modules         []*Item `json:"modules"`
+	ReadmeIsSet     bool
 }
 
 // StoreToRedis stores received repos to redis
@@ -75,4 +76,9 @@ func (item *Item) Normalize() {
 	item.Name = strings.ToLower(item.Name)
 	item.FullName = strings.ToLower(item.FullName)
 	item.Description = strings.Title(strings.ToLower(item.Description))
+}
+
+func (item *Item) SetReadme(readme string) {
+	item.Readme = readme
+	item.ReadmeIsSet = true
 }

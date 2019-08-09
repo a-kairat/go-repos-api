@@ -97,6 +97,7 @@ func startDependencySearch() {
 	keys = []string{}
 
 	time.Sleep(time.Hour * 6)
+	gh.Reset()
 	sendTenRequests()
 }
 
@@ -108,9 +109,7 @@ func runBFSlike(key string) {
 
 	modules := getModules(rawFiles, key)
 	item.Modules = modules
-
-	readmeFile := getReadmeHTML(key)
-	item.Readme = readmeFile
+	item.SetReadme(getReadmeHTML(key))
 
 	item.Normalize()
 
@@ -128,9 +127,8 @@ func runBFSlike(key string) {
 			childModules := getModules(childRawFiles, childItem.FullName)
 			childItem.Modules = childModules
 
-			if childItem.Readme == "" {
-				childReadmeFile := getReadmeHTML(childItem.FullName)
-				childItem.Readme = childReadmeFile
+			if !childItem.ReadmeIsSet {
+				childItem.SetReadme(getReadmeHTML(childItem.FullName))
 			}
 
 			childItem.Normalize()
@@ -201,7 +199,8 @@ func getModules(input string, key string) []*structs.Item {
 			if key == "" || itemErr != nil {
 				continue
 			} else {
-				item.Readme = getReadmeHTML(key)
+				item.SetReadme(getReadmeHTML(key))
+				item.Normalize()
 				result = append(result, &item)
 			}
 		}

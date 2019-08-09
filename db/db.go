@@ -155,7 +155,7 @@ func SelectLimitOffset(page, limit string) ([]Repo, error) {
 	var repos []Repo
 
 	err := DB.Model(&repos).
-		Column("id", "name", "description", "stargazers_count", "forks_count", "avatar_url").
+		Column("id", "name", "full_name", "description", "stargazers_count", "forks_count", "avatar_url").
 		Order("stargazers_count DESC NULLS LAST").
 		Limit(l).
 		Offset(offset).
@@ -204,8 +204,8 @@ func SelectByID(id string) string {
 		return ""
 	}
 
-	j, _ := json.MarshalIndent(result, "", "  ")
-
+	// j, _ := json.MarshalIndent(result, "", "  ")
+	j, _ := json.Marshal(result)
 	return string(j)
 
 }
@@ -232,7 +232,7 @@ func SelectByIDWithModules(id, l string) string {
 	}
 
 	result.Modules = queryModules(result.ID, level)
-	j, _ := json.MarshalIndent(result, "", "  ")
+	j, _ := json.Marshal(result)
 
 	var buf bytes.Buffer
 	gzipErr := utils.Gzip(&buf, j)

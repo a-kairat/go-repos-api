@@ -20,6 +20,7 @@ var GH = GitHubClient{
 		Scheme: "https",
 		Host:   "api.github.com",
 	},
+	requests: -9, // do not cont first 10 initial requests
 }
 
 // GitHubClient is a github http client
@@ -135,6 +136,7 @@ func (gh *GitHubClient) DoRaw(req *http.Request, v interface{}) (string, error) 
 		}
 		// gh.LogRequest()
 	}
+	
 	gh.requests++
 	return string(body), nil
 }
@@ -159,14 +161,15 @@ func (gh *GitHubClient) GetHTML(path string) (string, error) {
 
 	req.Header.Set("Accept", "application/vnd.github.v3.html")
 	respString, respErr := gh.DoRaw(req, nil)
-	if respErr != nil {
-		fmt.Println(path, "FAIL")
-	}
-	fmt.Println(path, "SUCCESS")
+
 	return respString, respErr
 }
 
 func (gh *GitHubClient) LogRequest() {
 	timeLeft := gh.resetTime - time.Now().Unix()
 	fmt.Printf("requests: %v\tlimit: %v\treset: %v\ttime before reset: %v\n", gh.requests, gh.limit, gh.resetTime, timeLeft)
+}
+
+func (gh *GitHubClient) Reset() {
+	gh.requests = -9
 }
