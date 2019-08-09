@@ -1,12 +1,9 @@
 package database
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
 	"strings"
-	"time"
 
 	"github.com/a-sube/go-repos-api/structs"
 	"github.com/a-sube/go-repos-api/utils"
@@ -234,14 +231,15 @@ func SelectByIDWithModules(id, l string) string {
 	result.Modules = queryModules(result.ID, level)
 	j, _ := json.Marshal(result)
 
-	var buf bytes.Buffer
-	gzipErr := utils.Gzip(&buf, j)
-	if gzipErr != nil {
-		log.Println(gzipErr)
-	}
+	/** takes too much RAM space **/
+	// var buf bytes.Buffer
+	// gzipErr := utils.Gzip(&buf, j)
+	// if gzipErr != nil {
+	// 	log.Println(gzipErr)
+	// }
 
-	key := fmt.Sprintf("%s-%s", id, l)
-	redisClient.Set(key, buf.Bytes(), time.Minute*30).Result()
+	// key := fmt.Sprintf("%s-%s", id, l)
+	// redisClient.Set(key, buf.Bytes(), time.Minute*30).Result()
 
 	return string(j)
 }
