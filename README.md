@@ -6,7 +6,7 @@ This is an application that pulls `Go` repositories from GitHub, stores to a dat
 Farmer is an automated task. Its goal is to fetch repositories and all `Go` modules and `readme` files for each repository.
 
 **Farmer's cycle is the following**:
-1. Fetch [up to 1000](https://developer.github.com/v3/search/) Go repositories by making 10 GitHub calls, 100 repositroies per each request (repositories sorted by stars count in descending oredr).
+1. Fetch [up to 1000](https://developer.github.com/v3/search/) Go repositories by making 10 GitHub calls, 100 repositroies per each request (repositories sorted by stars count in descending order).
 2. Store all that data to Redis. Single data example:
 ```go
 type Item struct {
